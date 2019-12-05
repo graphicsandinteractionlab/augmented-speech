@@ -21,10 +21,15 @@ odaslive_config = odas_dir + '/config/odaslive/pseye.cfg'
 odaslive_cmd = [odaslive_path, '-c', odaslive_config]
 
 ds_features = { 'n_features' : 26, 'n_context' : 9, 'beam_width' : 500, 'lm_alpha' : 0.75, 'lm_beta' : 1.85 }
+ds_model_path = os.getcwd() + ' models/deepspeech-0.6.0-models/output_graph.pbmm'
+ds_lm_path = os.getcwd() + ' models/deepspeech-0.6.0-models/lm.binary'
+ds_trie_path = os.getcwd() + ' models/deepspeech-0.6.0-models/trie'
 ds_alphabet = ''
 
 # setting up deepspeech
 def setup_deepspeech():
+    ds_model = Model(ds_model_path, ds_features['beam_width'])
+    ds_model.enableDecoderWithLM(ds_lm_path,ds_trie_path)
     pass
 
 
