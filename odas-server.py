@@ -2,6 +2,7 @@
 
 import subprocess
 import os
+import argparse
 import json
 
 from pythonosc import dispatcher
@@ -9,21 +10,17 @@ from pythonosc import osc_server
 from pythonosc import osc_bundle_builder
 from pythonosc import osc_message_builder
 
-from pythonosc.dispatcher import Dispatcher
 from pythonosc.udp_client import SimpleUDPClient
 
-odas_dir = '/home/hartmut/Development/SDKs/odas'
+odas_dir = '/home/hartmut/Code/SDKs/odas'
 odaslive_path = odas_dir + '/bin/odaslive'
 odaslive_config = odas_dir + '/config/odaslive/pseye.cfg'
 
 odaslive_cmd = [odaslive_path, '-c', odaslive_config]
 
-dispatcher = Dispatcher()
-client = SimpleUDPClient("212.201.64.123", 8050)
-
 
 # processes the frames
-def process_frame(buffer):
+def process_frame(buffer,client):
     # get dict of json buffer
     buffer_dict = json.loads(buffer)
     # parse src
@@ -40,8 +37,17 @@ def process_frame(buffer):
         client.send_message('/source', message_load)
         
 
-def run():
+if __name__ == "__main__":
     print('Ready ... ')
+
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ip", default="127.0.0.1", help="The ip to listen on")
+    parser.add_argument("--port", type=int, default=8080, help="The port to listen on")
+    args = parser.parse_args()
+
+    client = SimpleUDPClient(args.ip, args.port)
+
     buffer = ""
     # we pipe everything to the wrapper
     p = subprocess.Popen(odaslive_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -50,7 +56,7 @@ def run():
         # a frame can be identified by a closing curly bracket
         if s.find('}\n') == 0:
             buffer += s
-            process_frame(buffer)
+            process_frame(buffer,client)
             buffer = ""
         else:
             buffer += s
@@ -58,4 +64,3 @@ def run():
     p.wait()
     print('Stop!')
 
-run()

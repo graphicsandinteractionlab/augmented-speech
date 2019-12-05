@@ -1,6 +1,8 @@
 # ODAS
 *.raw
 
+# VScode
+.vscode
 
 
 # Byte-compiled / optimized / DLL files
