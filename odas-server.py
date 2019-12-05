@@ -6,6 +6,9 @@ import json
 
 from pythonosc import dispatcher
 from pythonosc import osc_server
+from pythonosc import osc_bundle_builder
+from pythonosc import osc_message_builder
+
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.udp_client import SimpleUDPClient
 
@@ -16,24 +19,26 @@ odaslive_config = odas_dir + '/config/odaslive/pseye.cfg'
 odaslive_cmd = [odaslive_path, '-c', odaslive_config]
 
 dispatcher = Dispatcher()
-# server = BlockingOSCUDPServer(("127.0.0.1", 8050), dispatcher)
 client = SimpleUDPClient("212.201.64.123", 8050)
 
 
 # processes the frames
 def process_frame(buffer):
+    # get dict of json buffer
     buffer_dict = json.loads(buffer)
-#    client.send_message("/oscControl/slider1", buffer_dict['src'][0]['x'])
-#    client.send_message("/oscControl/slider2", buffer_dict['src'][0]['y'])
-#    client.send_message("/oscControl/slider3", buffer_dict['src'][0]['z'])
-#    client.send_message("/oscControl/slider4", buffer_dict['src'][0]['id'])
-#    print(buffer_dict['src'][0]['x'],' ')
-    print(buffer)
-#    print(buffer_dict['src'][0]['id'],' ') 
-#    print(buffer_dict['src'][0]['y'],' ')
-#    print(buffer_dict['src'][0]['z'])
-    print()
-    pass
+    # parse src
+    for v in buffer_dict['src']:
+        message_load = []
+        message_load.append(buffer_dict['timeStamp'])
+        message_load.append(v['id'])
+        message_load.append(v['x'])
+        message_load.append(v['y'])
+        message_load.append(v['z'])
+        message_load.append(v['activity'])
+        message_load.append(v['tag'])
+        
+        client.send_message('/source', message_load)
+        
 
 def run():
     print('Ready ... ')
