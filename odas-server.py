@@ -12,11 +12,20 @@ from pythonosc import osc_message_builder
 
 from pythonosc.udp_client import SimpleUDPClient
 
-odas_dir = '/home/hartmut/Code/SDKs/odas'
+from deepspeech import Model
+
+odas_dir = os.getenv('HOME') + '/Code/SDKs/odas'
 odaslive_path = odas_dir + '/bin/odaslive'
 odaslive_config = odas_dir + '/config/odaslive/pseye.cfg'
 
 odaslive_cmd = [odaslive_path, '-c', odaslive_config]
+
+ds_features = { 'n_features' : 26, 'n_context' : 9, 'beam_width' : 500, 'lm_alpha' : 0.75, 'lm_beta' : 1.85 }
+ds_alphabet = ''
+
+# setting up deepspeech
+def setup_deepspeech():
+    pass
 
 
 # processes the frames
@@ -38,7 +47,6 @@ def process_frame(buffer,client):
         
 
 if __name__ == "__main__":
-    print('Ready ... ')
 
     
     parser = argparse.ArgumentParser()
@@ -47,6 +55,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     client = SimpleUDPClient(args.ip, args.port)
+
+    print('Ready ... ')
 
     buffer = ""
     # we pipe everything to the wrapper

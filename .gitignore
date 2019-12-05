@@ -4,6 +4,8 @@
 # VScode
 .vscode
 
+# DeepSpeech Models
+models
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
