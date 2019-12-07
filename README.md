@@ -5,15 +5,13 @@ A spatial transscriber visualization
 ## Dependencies
 
 ```
-pip3 install --user deepspeech-gpu
-
+pip3 install --user deepspeech
 ```
 
 or 
 
 ```
 pip3 install --user deepspeech-gpu
-
 ```
 
 further (consider using system provided dependencies)
