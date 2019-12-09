@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 
+# local stuff
 import subprocess
 import os
 import sys
 import argparse
 import json
+import numpy as np
 
-
+# profiling stuff
 from timeit import default_timer as timer
 
-# from pythonosc import dispatcher
-# from pythonosc import osc_server
-# from pythonosc import osc_bundle_builder
+# python-osc
 from pythonosc import osc_message_builder
-
 from pythonosc.udp_client import SimpleUDPClient
 
 from deepspeech import Model
@@ -29,6 +28,18 @@ ds_features = { 'n_features' : 26, 'n_context' : 9, 'beam_width' : 500, 'lm_alph
 ds_model_path = os.getcwd() + '/models/deepspeech-0.6.0-models/output_graph.pbmm'
 ds_lm_path = os.getcwd() + '/models/deepspeech-0.6.0-models/lm.binary'
 ds_trie_path = os.getcwd() + '/models/deepspeech-0.6.0-models/trie'
+
+class ODAS2DS:
+    def __init__(self):
+        # 16bit with 16000Hz sampled
+        self.channels = 4
+        self.frame_size = 2 * self.channels
+        pass
+
+    def run(self):
+        with open(os.getcwd() + '/test_separated.raw', 'rb') as self.file:
+            frame = self.file.read(self.frame_size)
+        pass
 
 
 class AugmentedSpeech:
@@ -99,13 +110,15 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--ip", default="127.0.0.1", help="The ip to listen on")
     parser.add_argument("--port", type=int, default=8080, help="The port to listen on")
-    parser.add_argument("--verbose", type=bool, default=False, help="Run in verbose mode")
-    
+    parser.add_argument("--verbose", type=bool, default=False, help="Run in verbose mode")   
     args = parser.parse_args()
-
+ 
     augs = AugmentedSpeech(args.verbose)
     augs.init_deepspeech()
     augs.init_osc(args.ip, args.port)
+
+    # o2d = ODAS2DS()
+    # o2d.run()
 
     sys.exit(augs.run())
 
