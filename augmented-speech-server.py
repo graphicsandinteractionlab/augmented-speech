@@ -7,6 +7,7 @@ import sys
 import argparse
 import json
 import numpy as np
+import yaml
 
 # profiling stuff
 from timeit import default_timer as timer
@@ -41,6 +42,22 @@ class ODAS2DS:
             frame = self.file.read(self.frame_size)
         pass
 
+class SpeechBlock:
+    def __init__(self,startTimeStamp,speechId,channel):
+        self.start = startTimeStamp
+        self.end = self.start
+        self.id = speechId
+        self.channel = channel
+        pass
+
+    def identifier(self):
+        return self.id
+
+    def setEndTimeStamp(self,timeStamp):
+        self.end = timeStamp
+
+    def __str__(self):
+        return "id:{0} start:{1} end:{2}".format(self.id,self.start,self.end)
 
 class AugmentedSpeech:
     """
@@ -49,6 +66,7 @@ class AugmentedSpeech:
         self.ds_model = None
         self.osc_client = None
         self.verbose = runVerbose
+        self.currentBlocks = []
         pass
 
     # setting up OSC subsystem
@@ -63,20 +81,51 @@ class AugmentedSpeech:
         self.ds_model.enableDecoderWithLM(ds_lm_path,ds_trie_path,ds_features['lm_alpha'],ds_features['lm_beta'])
         pass
 
+    
+    def purge(self):
+        for blk in self.currentBlocks:
+            print(blk)
+
+
+    def update_tracker(self,id,channel,timeStamp):
+        for blk in self.currentBlocks:
+            if blk.identifier() == id:
+                # update block
+                blk.setEndTimeStamp(timeStamp)
+                return
+
+        # not found and updated - add a new block
+        self.currentBlocks.append(SpeechBlock(timeStamp,id,channel))
+
+        # now send off stuff to deepspeech
+        self.purge()
 
     # processes a frame of the ODAS tracker
     def __process_odas_frame(self,buffer):
         # get dict of json buffer
         buffer_dict = json.loads(buffer)
+
+        buffer_src_list = buffer_dict['src']; 
+
         # parse src
-        for v in buffer_dict['src']:
+        for i in range(len(buffer_src_list)):
+
+            # this is the i'th channel
+            v = buffer_src_list[i]
+
+            timeStamp = buffer_dict['timeStamp']
 
             # filter out inactive sources
             if v['activity'] < 0.5:
                 continue
 
+            # update the tracker
+            self.update_tracker(v['id'],i,timeStamp)
+
+            # trap ahead - added channel
             pay_load = []
-            pay_load.append(buffer_dict['timeStamp'])
+            pay_load.append(timeStamp)
+            pay_load.append(i)       # this is the channel - needed to parse the right channel out of the raw file
             pay_load.append(v['id'])
             pay_load.append(v['x'])
             pay_load.append(v['y'])
