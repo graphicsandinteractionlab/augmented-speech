@@ -20,7 +20,8 @@ from deepspeech import Model
 
 odas_dir = os.getenv('HOME') + '/Code/SDKs/odas'
 odaslive_path = odas_dir + '/bin/odaslive'
-odaslive_config = os.getcwd() + '/config/odas_pseye.cfg'
+# odaslive_config = os.getcwd() + '/config/odas_pseye.cfg'
+odaslive_config = os.getcwd() + '/config/respeaker_4_mic_array.cfg'
 
 odaslive_cmd = [odaslive_path, '-c', odaslive_config]
 
@@ -67,6 +68,7 @@ class AugmentedSpeech:
         self.osc_client = None
         self.verbose = runVerbose
         self.currentBlocks = []
+
         pass
 
     # setting up OSC subsystem
