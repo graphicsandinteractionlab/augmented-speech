@@ -8,7 +8,7 @@ import argparse
 import json
 import time
 import numpy as np
-# import yaml
+import yaml
 
 # profiling stuff
 from timeit import default_timer as timer
@@ -23,8 +23,8 @@ from threading import Thread
 
 odas_dir = os.getenv('HOME') + '/Code/SDKs/odas'
 odaslive_path = odas_dir + '/bin/odaslive'
-# odaslive_config = os.getcwd() + '/config/odas_pseye.cfg'
-odaslive_config = os.getcwd() + '/config/respeaker_4_mic_array.cfg'
+odaslive_config = os.getcwd() + '/config/odas_pseye.cfg'
+# odaslive_config = os.getcwd() + '/config/respeaker_4_mic_array.cfg'
 
 odaslive_cmd = [odaslive_path, '-c', odaslive_config]
 
@@ -51,7 +51,7 @@ class ODAS2DS:
 
 
 class SpeechBlock:
-    def __init__(self, startTimeStamp, speechId, channel):
+    def __init__(self, startTimeStamp, speechId, channel, activity):
         self.start = startTimeStamp
         self.end = self.start
         self.id = speechId
@@ -73,6 +73,7 @@ class AugmentedSpeech:
         self.osc_client = None
         self.verbose = runVerbose
         self.currentBlocks = []
+        self.currentTimeStamp = 0
 
     # setting up OSC subsystem
     def init_osc(self, host, port):
@@ -133,46 +134,43 @@ class AugmentedSpeech:
         for blk in self.currentBlocks :
 
             # only submit blocks that have information and are of certain length
-            if (blk.end - blk.start) > 100 and blk.activity < 0.5 and blk.activity > 0.0:
+            if blk.activity < 0.5 and (self.currentTimeStamp - blk.end) > 10:
                
-
-                # print(blk.id,blk.start,blk.end,blk.activity)
-
-                # now really purge a block
-                self.currentBlocks.remove(blk)
-
                 # hand off to a thread
                 t = Thread(target=self.runInference,args=(blk,))
                 t.start()
 
-
+                # now really purge a block
+                self.currentBlocks.remove(blk)
 
     def update_tracker(self, id, channel, timeStamp, activity):
+        if id == 0:
+            return
         for blk in self.currentBlocks:
             if blk.id == id:
                 # update block
                 blk.end = timeStamp
                 blk.channel = channel
-                alpha = 0.5
+                alpha = 0.7
                 blk.activity = (1 - alpha) * blk.activity + alpha * activity  
                 return
         # not found and updated - add a new block
-        self.currentBlocks.append(SpeechBlock(timeStamp, id, channel))
+        self.currentBlocks.append(SpeechBlock(timeStamp, id, channel, activity))
 
     # processes a frame of the ODAS tracker
     def __process_odas_frame(self, buffer):
         # get dict of json buffer
         buffer_dict = json.loads(buffer)
 
-        buffer_src_list= buffer_dict['src'];
+        buffer_src_list= buffer_dict['src']
+        timeStamp = buffer_dict['timeStamp']
+
 
         # parse src
         for i in range(len(buffer_src_list)):
 
             # this is the i'th channel
             v = buffer_src_list[i]
-
-            timeStamp = buffer_dict['timeStamp']
 
             # update the tracker
             self.update_tracker(v['id'], i, timeStamp, v['activity'])
@@ -193,6 +191,8 @@ class AugmentedSpeech:
             pay_load.append(v['tag'])
 
             self.osc_client.send_message('/source', pay_load)
+
+        self.currentTimeStamp = timeStamp
 
 
     def run(self):
