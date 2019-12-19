@@ -6,6 +6,7 @@ import os
 import sys
 import argparse
 import json
+import time
 import numpy as np
 # import yaml
 
@@ -17,6 +18,8 @@ from pythonosc import osc_message_builder
 from pythonosc.udp_client import SimpleUDPClient
 
 from deepspeech import Model
+
+from threading import Thread
 
 odas_dir = os.getenv('HOME') + '/Development/SDKs/odas'
 odaslive_path = odas_dir + '/bin/odaslive'
@@ -32,6 +35,7 @@ ds_model_path = os.getcwd() + '/models/deepspeech-0.6.0-models/output_graph.pbmm
 ds_lm_path = os.getcwd() + '/models/deepspeech-0.6.0-models/lm.binary'
 ds_trie_path = os.getcwd() + '/models/deepspeech-0.6.0-models/trie'
 
+raw_file = os.getcwd() + '/separated.raw'
 
 class ODAS2DS:
     def __init__(self):
@@ -53,6 +57,7 @@ class SpeechBlock:
         self.id = speechId
         self.channel = channel
         self.activity = 0
+        self.inference = []
         pass
 
     def __str__(self):
@@ -68,7 +73,6 @@ class AugmentedSpeech:
         self.osc_client = None
         self.verbose = runVerbose
         self.currentBlocks = []
-        pass
 
     # setting up OSC subsystem
     def init_osc(self, host, port):
@@ -81,25 +85,71 @@ class AugmentedSpeech:
         self.ds_model = Model(ds_model_path, ds_features['beam_width'])
         self.ds_model.enableDecoderWithLM(
             ds_lm_path, ds_trie_path, ds_features['lm_alpha'], ds_features['lm_beta'])
-        pass
+
+    def submitInference(self,blk):
+        pay_load = []
+        pay_load.append(blk.id)
+        pay_load.append(blk.start)
+        pay_load.append(blk.end)
+
+        # need to replace with actual inference
+        pay_load.append("Hello World {0}".format(blk.id))
+
+        self.osc_client.send_message('/text', pay_load)
+
+        print('... inference result submitted for',blk.id)
+
+    def runInference(self,blk):
+        # running inference on the block detected
+        print('Running inference on ',blk.id)
+
+        # pretend we are deepspeech ;)
+        # time.sleep(5)
+
+        hop_size = 128
+        channels = 4
+        # bytes_per_sample = 2 # we use numpy.int16 ...
+
+        n_frames = blk.end-blk.start  # 
+
+        n_bytes = hop_size * channels * n_frames
+
+        start_offset = hop_size * channels * blk.start
+
+        # load data
+        x = np.fromfile(raw_file,dtype=np.int16,offset=start_offset,count=n_bytes)
+
+        n_bytes_per_channel = int(n_bytes / channels)
+
+        x = np.reshape(x,(n_bytes_per_channel,channels))
+
+        audio = x[:,blk.channel] # extract channel
+
+        #res = self.ds_model.sttWithMetadata(audio)
+        #string_result = ''.join(item.character for item in res.items)
+
+        res = self.ds_model.stt(audio)
+
+        print(res)
+
+        self.submitInference(blk)
 
     def purge(self):
         for blk in self.currentBlocks :
 
             # only submit blocks that have information and are of certain length
             if (blk.end - blk.start) > 100 and blk.activity < 0.5 and blk.activity > 0.0:
-                pay_load = []
-                pay_load.append(blk.id)
-                pay_load.append(blk.start)
-                pay_load.append(blk.end)
-                pay_load.append("Hello World {0}".format(blk.id))
-
-                self.osc_client.send_message('/text', pay_load)
+               
 
                 # print(blk.id,blk.start,blk.end,blk.activity)
 
                 # now really purge a block
                 self.currentBlocks.remove(blk)
+
+                # hand off to a thread
+                t = Thread(target=self.runInference,args=(blk,))
+                t.start()
+
 
 
     def update_tracker(self, id, channel, timeStamp, activity):
@@ -107,6 +157,7 @@ class AugmentedSpeech:
             if blk.id == id:
                 # update block
                 blk.end = timeStamp
+                blk.channel = channel
                 alpha = 0.5
                 blk.activity = (1 - alpha) * blk.activity + alpha * activity  
                 return
