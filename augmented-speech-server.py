@@ -80,7 +80,6 @@ class AugmentedSpeech:
         pass
 
     # Setting up deepspeech
-
     def init_deepspeech(self):
         self.ds_model = Model(ds_model_path, ds_features['beam_width'])
         self.ds_model.enableDecoderWithLM(
