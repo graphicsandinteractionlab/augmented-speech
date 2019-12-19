@@ -101,7 +101,7 @@ class AugmentedSpeech:
 
         self.osc_client.send_message('/text', pay_load)
 
-        print('... inference ',pay_load)
+        print('inference ',pay_load)
 
     def runInference(self,blk):
         # running inference on the block detected
@@ -111,22 +111,24 @@ class AugmentedSpeech:
         channels = 4
         # bytes_per_sample = 2 # we use numpy.int16 ...
 
-        n_frames = blk.end - blk.start + 1  # 
+        n_frames = blk.end - blk.start + 1
 
-        n_bytes = hop_size * channels * n_frames
+        n_samples = hop_size * channels * n_frames
 
         start_offset = hop_size * channels * blk.start
 
         # load data
-        x = np.fromfile(raw_file,dtype=np.int16,offset=start_offset,count=n_bytes)
+        x = np.fromfile(raw_file,dtype=np.int16,offset=start_offset,count=n_samples)
 
-        n_bytes_per_channel = int(n_bytes / channels)
-
-        x = np.reshape(x,(n_bytes_per_channel,channels))
+        x = np.reshape(x,(hop_size * n_frames,channels))
 
         audio = x[:,blk.channel] # extract channel
 
         blk.inference = self.ds_model.stt(audio)
+
+        # debugging - to play the snippet: ffplay -f s16le -ar 16000 snippet_xxxx.raw
+        debug_raw = "snippet_{0}_{1}_{2}.raw".format(blk.id,blk.start,blk.end)
+        audio.tofile(debug_raw)
 
         self.submitInference(blk)
 
