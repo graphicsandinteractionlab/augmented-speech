@@ -52,13 +52,8 @@ class SpeechBlock:
         self.end = self.start
         self.id = speechId
         self.channel = channel
+        self.activity = 0
         pass
-
-    def identifier(self):
-        return self.id
-
-    def setEndTimeStamp(self, timeStamp):
-        self.end = timeStamp
 
     def __str__(self):
         return "id:{0} start:{1} end:{2}".format(self.id, self.start, self.end)
@@ -91,32 +86,32 @@ class AugmentedSpeech:
     def purge(self):
         for blk in self.currentBlocks :
 
-            if (blk.end - blk.start) < 10:
-                pass
+            # only submit blocks that have information and are of certain length
+            if (blk.end - blk.start) > 100 and blk.activity < 0.5 and blk.activity > 0.0:
+                pay_load = []
+                pay_load.append(blk.id)
+                pay_load.append(blk.start)
+                pay_load.append(blk.end)
+                pay_load.append("Hello World {0}".format(blk.id))
 
-            pay_load = []
-            pay_load.append(blk.identifier())
-            pay_load.append(blk.start)
-            pay_load.append(blk.end)
-            pay_load.append("Hello World {0}".format(blk.id))
+                self.osc_client.send_message('/text', pay_load)
 
-            print(pay_load)
+                # print(blk.id,blk.start,blk.end,blk.activity)
 
-            self.osc_client.send_message('/text', pay_load)
+                # now really purge a block
+                self.currentBlocks.remove(blk)
 
 
-    def update_tracker(self, id, channel, timeStamp):
+    def update_tracker(self, id, channel, timeStamp, activity):
         for blk in self.currentBlocks:
-            if blk.identifier() == id:
+            if blk.id == id:
                 # update block
                 blk.end = timeStamp
+                alpha = 0.5
+                blk.activity = (1 - alpha) * blk.activity + alpha * activity  
                 return
-
         # not found and updated - add a new block
         self.currentBlocks.append(SpeechBlock(timeStamp, id, channel))
-
-        # now send off stuff to deepspeech
-        self.purge()
 
     # processes a frame of the ODAS tracker
     def __process_odas_frame(self, buffer):
@@ -133,12 +128,12 @@ class AugmentedSpeech:
 
             timeStamp = buffer_dict['timeStamp']
 
+            # update the tracker
+            self.update_tracker(v['id'], i, timeStamp, v['activity'])
+
             # filter out inactive sources
             if v['activity'] < 0.5:
                 continue
-
-            # update the tracker
-            self.update_tracker(v['id'], i, timeStamp)
 
             # no trap ahead - added channel
             pay_load = []
@@ -153,7 +148,6 @@ class AugmentedSpeech:
 
             self.osc_client.send_message('/source', pay_load)
 
-            pay_load = []
 
     def run(self):
         print('ready ... ')
@@ -166,6 +160,7 @@ class AugmentedSpeech:
             if s.find('}\n') == 0:
                 buffer += s
                 self.__process_odas_frame(buffer)
+                self.purge()
                 buffer = ""
             else:
                 buffer += s
