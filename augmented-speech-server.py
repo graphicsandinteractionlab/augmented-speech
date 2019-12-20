@@ -127,8 +127,8 @@ class AugmentedSpeech:
         blk.inference = self.ds_model.stt(audio)
 
         # debugging - to play the snippet: ffplay -f s16le -ar 16000 snippet_xxxx.raw
-        debug_raw = "snippet_{0}_{1}_{2}.raw".format(blk.id,blk.start,blk.end)
-        audio.tofile(debug_raw)
+        # debug_raw = "snippet_{0}_{1}_{2}.raw".format(blk.id,blk.start,blk.end)
+        # audio.tofile(debug_raw)
 
         self.submitInference(blk)
 
