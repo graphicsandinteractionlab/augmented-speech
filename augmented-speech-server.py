@@ -23,8 +23,8 @@ from threading import Thread
 
 odas_dir = os.getenv('HOME') + '/Code/SDKs/odas'
 odaslive_path = odas_dir + '/bin/odaslive'
-odaslive_config = os.getcwd() + '/config/odas_pseye.cfg'
-# odaslive_config = os.getcwd() + '/config/respeaker_4_mic_array.cfg'
+# odaslive_config = os.getcwd() + '/config/odas_pseye.cfg'
+odaslive_config = os.getcwd() + '/config/respeaker_4_mic_array.cfg'
 
 odaslive_cmd = [odaslive_path, '-c', odaslive_config]
 
@@ -109,7 +109,7 @@ class AugmentedSpeech:
 
         hop_size = 128
         channels = 4
-        # bytes_per_sample = 2 # we use numpy.int16 ...
+        bytes_per_sample = 2 # we use numpy.int16 ...
 
         n_frames = blk.end - blk.start + 1
 
@@ -118,7 +118,7 @@ class AugmentedSpeech:
         start_offset = hop_size * channels * blk.start
 
         # load data
-        x = np.fromfile(raw_file,dtype=np.int16,offset=start_offset,count=n_samples)
+        x = np.fromfile(raw_file,dtype=np.int16,offset=start_offset * bytes_per_sample,count=n_samples)
 
         x = np.reshape(x,(hop_size * n_frames,channels))
 
