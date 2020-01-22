@@ -31,23 +31,23 @@ odaslive_cmd = [odaslive_path, '-c', odaslive_config]
 # input based on deepspeech examples
 ds_features = {'n_features': 26, 'n_context': 9,
     'beam_width': 500, 'lm_alpha': 0.75, 'lm_beta': 1.85}
-ds_model_path = os.getcwd() + '/models/deepspeech-0.6.0-models/output_graph.pbmm'
-ds_lm_path = os.getcwd() + '/models/deepspeech-0.6.0-models/lm.binary'
-ds_trie_path = os.getcwd() + '/models/deepspeech-0.6.0-models/trie'
+ds_model_path = os.getcwd() + '/models/deepspeech-0.6.1-models/output_graph.pbmm'
+ds_lm_path = os.getcwd() + '/models/deepspeech-0.6.1-models/lm.binary'
+ds_trie_path = os.getcwd() + '/models/deepspeech-0.6.1-models/trie'
 
 raw_file = os.getcwd() + '/separated.raw'
 
-class ODAS2DS:
-    def __init__(self):
-        # 16bit with 16000Hz sampled
-        self.channels = 4
-        self.frame_size = 2 * self.channels
-        pass
+# class ODAS2DS:
+#     def __init__(self):
+#         # 16bit with 16000Hz sampled
+#         self.channels = 4
+#         self.frame_size = 2 * self.channels
+#         pass
 
-    def run(self):
-        with open(os.getcwd() + '/test_separated.raw', 'rb') as self.file:
-            frame = self.file.read(self.frame_size)
-        pass
+#     def run(self):
+#         with open(os.getcwd() + '/test_separated.raw', 'rb') as self.file:
+#             frame = self.file.read(self.frame_size)
+#         pass
 
 
 class SpeechBlock:
@@ -68,9 +68,10 @@ class AugmentedSpeech:
     """
     """
 
-    def __init__(self, runVerbose=False):
+    def __init__(self, runVerbose=False, allowDebug = False):
         self.ds_model = None
         self.osc_client = None
+        self.debugging = allowDebug
         self.verbose = runVerbose
         self.currentBlocks = []
         self.currentTimeStamp = 0
@@ -126,9 +127,10 @@ class AugmentedSpeech:
 
         blk.inference = self.ds_model.stt(audio)
 
-        # debugging - to play the snippet: ffplay -f s16le -ar 16000 snippet_xxxx.raw
-        # debug_raw = "snippet_{0}_{1}_{2}.raw".format(blk.id,blk.start,blk.end)
-        # audio.tofile(debug_raw)
+        if self.debugging:
+            # debugging - to play a snippet: ffplay -f s16le -ar 16000 snippet_xxxx.raw
+            debug_raw = "snippet_{0}_{1}_{2}.raw".format(blk.id,blk.start,blk.end)
+            audio.tofile(debug_raw)
 
         self.submitInference(blk)
 
@@ -225,9 +227,12 @@ def main():
                         help="The port to listen on")
     parser.add_argument("--verbose", type=bool,
                         default=False, help="Run in verbose mode")
+    parser.add_argument("--debug", type=bool,
+                        default=False, help="debug the snippet extraction")
+
     args = parser.parse_args()
 
-    augs = AugmentedSpeech(args.verbose)
+    augs = AugmentedSpeech(args.verbose,args.debug)
     augs.init_deepspeech()
     augs.init_osc(args.ip, args.port)
 
