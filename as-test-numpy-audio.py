@@ -2,6 +2,12 @@
 
 import numpy as np
 
+import os
+import platform
+
+
+print(platform.node())
+
 class RawParser: 
     def __init__(self):
         pass
